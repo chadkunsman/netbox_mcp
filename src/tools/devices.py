@@ -56,12 +56,16 @@ def _parse_natural_language_query(query: str) -> DeviceFilterParameters:
     elif re.search(r'offline', query, re.IGNORECASE):
         params.status = 'offline'
     
-    # Extract specific device name
+    # Extract specific device name patterns
     name_match = re.search(r'device (\w+[\w\.-]*)', query, re.IGNORECASE)
     if not name_match:
         name_match = re.search(r'(\w+[\w\.-]*) device', query, re.IGNORECASE)
     if name_match:
         params.name = name_match.group(1)
+    
+    # If no specific filters found, use general search
+    if not any([params.site, params.role, params.status, params.name]):
+        params.search = query
     
     # Extract manufacturer information
     manufacturer_match = re.search(r'manufacturer (\w+)', query, re.IGNORECASE)
@@ -183,6 +187,16 @@ def get_devices_by_filter(mcp, filter_params: DeviceFilterParameters, ctx: Conte
         
         # Adapt parameters to match NetBox API requirements
         adapted_params = {}
+        
+        # Handle name_contains for pattern matching
+        if 'name_contains' in params:
+            name_pattern = params.pop('name_contains')
+            adapted_params['name__ic'] = name_pattern  # Case-insensitive contains
+        
+        # Handle cross-field search
+        if 'search' in params:
+            search_term = params.pop('search')
+            adapted_params['q'] = search_term  # NetBox's general search parameter
         
         # Special handling for site
         if 'site' in params:

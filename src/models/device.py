@@ -8,7 +8,9 @@ from pydantic import BaseModel, Field
 
 class DeviceFilterParameters(BaseModel):
     """Query parameters for filtering devices."""
-    name: Optional[str] = Field(None, description="Device name (supports regex)")
+    name: Optional[str] = Field(None, description="Device name - exact match")
+    name_contains: Optional[str] = Field(None, description="Device name pattern match (case-insensitive contains search)")
+    search: Optional[str] = Field(None, description="Cross-field search across name, model, description, and serial")
     site: Optional[str] = Field(None, description="Site name or ID (e.g., 'SF1', 'NYC1', 'DEN1')")
     role: Optional[str] = Field(None, description="Device role (e.g., 'office_access_switch', 'router', 'net-wireless-accesspoint')")
     status: Optional[str] = Field(None, description="Device status (e.g., 'active', 'planned')")

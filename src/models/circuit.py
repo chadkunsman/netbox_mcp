@@ -8,7 +8,9 @@ from pydantic import BaseModel, Field
 
 class CircuitFilterParameters(BaseModel):
     """Query parameters for filtering circuits."""
-    cid: Optional[str] = Field(None, description="Circuit ID (supports regex)")
+    cid: Optional[str] = Field(None, description="Circuit ID - exact match")
+    cid_contains: Optional[str] = Field(None, description="Circuit ID pattern match (case-insensitive contains search)")
+    search: Optional[str] = Field(None, description="Cross-field search across CID, provider, description, and terminations")
     provider: Optional[str] = Field(None, description="Provider name or ID")
     type: Optional[str] = Field(None, description="Circuit type (e.g., 'Internet', 'MPLS', 'Point-to-Point')")
     status: Optional[str] = Field(None, description="Circuit status (e.g., 'active', 'planned', 'provisioning')")

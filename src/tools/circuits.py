@@ -23,19 +23,22 @@ def _parse_natural_language_query(query: str) -> CircuitFilterParameters:
     """
     params = CircuitFilterParameters()
     
-    # Extract circuit ID
-    cid_match = re.search(r'circuit (?:id|cid) ([A-Za-z0-9\-_]+)', query, re.IGNORECASE)
-    if not cid_match:
-        cid_match = re.search(r'cid ([A-Za-z0-9\-_]+)', query, re.IGNORECASE)
+    # Extract circuit ID (simplified)
+    cid_match = re.search(r'(?:circuit|cid)\s+([A-Za-z0-9\-_]+)', query, re.IGNORECASE)
     if cid_match:
         params.cid = cid_match.group(1)
     
+    # Extract site information (standardized)
+    site_match = re.search(r'(?:at|in|from|to)\s+(?:site\s+)?(\w+)', query, re.IGNORECASE)
+    if site_match:
+        params.site = site_match.group(1)
+    
     # Extract provider information
-    provider_match = re.search(r'provider (\w+)', query, re.IGNORECASE)
+    provider_match = re.search(r'provider\s+(\w+)', query, re.IGNORECASE)
     if provider_match:
         params.provider = provider_match.group(1)
     
-    # Extract circuit type information
+    # Extract circuit type information (keep domain-specific intelligence)
     if re.search(r'internet', query, re.IGNORECASE):
         params.type = 'Internet'
     elif re.search(r'mpls', query, re.IGNORECASE):
@@ -47,40 +50,28 @@ def _parse_natural_language_query(query: str) -> CircuitFilterParameters:
     elif re.search(r'fiber', query, re.IGNORECASE):
         params.type = 'Fiber'
     
-    # Extract site information
-    site_match = re.search(r'(?:at|in|from|to) (?:site|location) (\w+)', query, re.IGNORECASE)
-    if not site_match:
-        site_match = re.search(r'(?:at|in|from|to) (\w+) (?:site|location)', query, re.IGNORECASE)
-    if not site_match:
-        site_match = re.search(r'site (\w+)', query, re.IGNORECASE)
-    if site_match:
-        params.site = site_match.group(1)
-    
-    # Extract status information
+    # Extract status information (keep limited valid values)
     if re.search(r'active', query, re.IGNORECASE):
         params.status = 'active'
     elif re.search(r'planned', query, re.IGNORECASE):
         params.status = 'planned'
     elif re.search(r'provisioning', query, re.IGNORECASE):
         params.status = 'provisioning'
-    elif re.search(r'deprovisioning', query, re.IGNORECASE):
-        params.status = 'deprovisioning'
     elif re.search(r'offline', query, re.IGNORECASE):
         params.status = 'offline'
     
-    # Extract tenant information
-    tenant_match = re.search(r'tenant (\w+)', query, re.IGNORECASE)
-    if tenant_match:
-        params.tenant = tenant_match.group(1)
-        
-    # Extract limit information
-    limit_match = re.search(r'(?:limit|top|first) (\d+)', query, re.IGNORECASE)
+    # Extract limit information  
+    limit_match = re.search(r'(?:limit|top|first)\s+(\d+)', query, re.IGNORECASE)
     if limit_match:
         try:
             limit = int(limit_match.group(1))
-            params.limit = min(max(limit, 1), 1000)  # Ensure between 1 and 1000
+            params.limit = min(max(limit, 1), 1000)
         except ValueError:
             pass
+    
+    # If no specific filters found, use general search
+    if not any([params.cid, params.site, params.provider, params.type, params.status]):
+        params.search = query
     
     return params
 
@@ -201,6 +192,16 @@ def get_circuits_by_filter(mcp, filter_params: CircuitFilterParameters, ctx: Con
         
         # Adapt parameters to match NetBox API requirements
         adapted_params = {}
+        
+        # Handle cid_contains for pattern matching
+        if 'cid_contains' in params:
+            cid_pattern = params.pop('cid_contains')
+            adapted_params['cid__ic'] = cid_pattern  # Case-insensitive contains
+        
+        # Handle cross-field search
+        if 'search' in params:
+            search_term = params.pop('search')
+            adapted_params['q'] = search_term  # NetBox's general search parameter
         
         # Special handling for provider
         if 'provider' in params:
