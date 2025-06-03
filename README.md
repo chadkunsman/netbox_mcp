@@ -4,7 +4,7 @@ A comprehensive read-only FastMCP server that exposes NetBox API functionality t
 
 ## Overview
 
-This project implements a read-only MCP server that provides comprehensive tools to interact with NetBox infrastructure data. It enables natural language queries about network devices, sites, circuits, and IP prefixes, making it easier for AI assistants to retrieve and present network infrastructure information without allowing any modifications to the NetBox data.
+This project implements a read-only MCP server that provides comprehensive tools to interact with NetBox infrastructure data. It enables natural language queries about network devices, sites, circuits, VLANs, and IP prefixes, making it easier for AI assistants to retrieve and present network infrastructure information without allowing any modifications to the NetBox data.
 
 ## Features
 
@@ -31,6 +31,12 @@ This project implements a read-only MCP server that provides comprehensive tools
 - VLAN association and filtering
 - Prefix pool management
 - CIDR notation pattern matching
+
+### VLAN Management
+- Query VLANs by name, VID (VLAN ID), site, group, tenant, role, and status
+- True substring matching for VLAN names and descriptions
+- Cross-field search across VLAN properties
+- Support for VLAN group and tenant organization
 
 ### Natural Language Processing
 - Intelligent parsing of natural language queries into structured API calls
@@ -63,6 +69,13 @@ This project implements a read-only MCP server that provides comprehensive tools
 - "List all /24 subnets"
 - "Find prefixes in VLAN 100"
 - "Show prefix pools"
+
+### VLAN Queries
+- "Show me VLAN 100"
+- "List all VLANs at site SF1"
+- "Find VLANs with '90' in the name"
+- "Show active VLANs for tenant ABC"
+- "Get all production VLANs"
 
 ## Installation
 
@@ -166,12 +179,14 @@ netbox-mcp/
 │   │   ├── devices.py     # Device-related tools
 │   │   ├── sites.py       # Site-related tools
 │   │   ├── circuits.py    # Circuit-related tools
-│   │   └── prefixes.py    # IP prefix-related tools
+│   │   ├── prefixes.py    # IP prefix-related tools
+│   │   └── vlans.py       # VLAN-related tools
 │   ├── models/            # Pydantic models
 │   │   ├── device.py      # Device-related models
 │   │   ├── site.py        # Site-related models
 │   │   ├── circuit.py     # Circuit-related models
-│   │   └── prefix.py      # IP prefix-related models
+│   │   ├── prefix.py      # IP prefix-related models
+│   │   └── vlan.py        # VLAN-related models
 │   └── config/            # Configuration
 │       └── netbox.py      # NetBox client configuration
 ├── docs/                  # Documentation

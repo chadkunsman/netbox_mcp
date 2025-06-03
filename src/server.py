@@ -16,9 +16,11 @@ from models.device import DeviceFilterParameters, DeviceQuery, DeviceSummary
 from models.site import SiteSummary, SiteBasic
 from models.circuit import CircuitFilterParameters, CircuitQuery, CircuitSummary
 from models.prefix import PrefixFilterParameters, PrefixQuery, PrefixSummary
+from models.vlan import VlanFilterParameters, VlanQuery, VlanSummary
 from tools.devices import get_devices_by_filter, get_device_by_name, query_devices
 from tools.sites import get_site_info_by_name, list_all_sites
 from tools.circuits import get_circuits_by_filter, get_circuit_by_cid, query_circuits
+from tools.vlans import get_vlans_by_filter, get_vlan_by_id, query_vlans
 
 # Load environment variables
 load_dotenv()
@@ -246,6 +248,69 @@ async def ask_about_prefixes_tool(query: PrefixQuery, ctx: Context) -> dict:
     """
     from tools.prefixes import ask_about_prefixes as ask_about_prefixes_impl
     return ask_about_prefixes_impl(query, ctx)
+
+@mcp.tool()
+async def get_vlans(filter_params: VlanFilterParameters, ctx: Context) -> list[VlanSummary]:
+    """
+    Get VLANs from NetBox based on filter parameters.
+    
+    Available filters:
+    - vid: VLAN ID number (e.g., 100)
+    - name: Exact VLAN name
+    - name_contains: Pattern matching for VLAN names (case-insensitive)
+    - site: Filter by site name (e.g., "SF1", "NYC1")
+    - group: Filter by VLAN group name
+    - tenant: Filter by tenant name
+    - role: Filter by VLAN role
+    - status: Filter by status (e.g., "active", "reserved", "deprecated")
+    - search: Cross-field search across name, description, and VID
+      IMPORTANT: Treats multiple words as AND (all must match). Use separate calls for OR logic.
+    - description_contains: Pattern matching for VLAN descriptions (case-insensitive)
+    - tag: Filter by tag
+    - limit: Maximum number of results (default 50, max 1000)
+    
+    Search strategy recommendations:
+    - For VLAN names: Use name_contains for substring matching (e.g., name_contains="90" finds "VLAN-90-Production")
+    - For VLAN IDs: Use vid for exact matches
+    - For general search: Use search with single terms for best results
+    
+    Args:
+        filter_params: Parameters to filter VLANs by
+        ctx: MCP context
+    """
+    return get_vlans_by_filter(mcp, filter_params, ctx)
+
+@mcp.tool()
+async def get_vlan(vlan_id: int, ctx: Context) -> VlanSummary:
+    """
+    Get a specific VLAN by ID.
+    
+    Returns detailed information about a single VLAN including VID, name,
+    site assignment, group, tenant, role, and status.
+    
+    Args:
+        vlan_id: NetBox VLAN ID
+        ctx: MCP context
+    """
+    return get_vlan_by_id(mcp, vlan_id, ctx)
+
+@mcp.tool()
+async def ask_about_vlans(query: VlanQuery, ctx: Context) -> list[VlanSummary]:
+    """
+    Query VLANs using natural language.
+    
+    Examples:
+        - "Show me VLAN 100"
+        - "List all VLANs at site SF1"
+        - "Find VLANs with '90' in the name"
+        - "Show active VLANs for tenant ABC"
+        - "Get all production VLANs"
+    
+    Args:
+        query: Natural language query string
+        ctx: MCP context
+    """
+    return query_vlans(mcp, query, ctx)
 
 if __name__ == "__main__":
     mcp.run()

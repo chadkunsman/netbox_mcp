@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a read-only FastMCP server that exposes NetBox API functionality to AI systems via the Model Context Protocol (MCP). The server provides comprehensive access to devices, sites, and circuits, enabling natural language queries about network infrastructure in a NetBox instance without allowing any modifications to the NetBox data.
+This is a read-only FastMCP server that exposes NetBox API functionality to AI systems via the Model Context Protocol (MCP). The server provides comprehensive access to devices, sites, circuits, VLANs, and IP prefixes, enabling natural language queries about network infrastructure in a NetBox instance without allowing any modifications to the NetBox data.
 
 FastMCP servers act as bridges between AI applications (like Claude, ChatGPT) and your APIs or services, allowing AI systems to discover and use your tools intelligently.
 
@@ -14,7 +14,7 @@ The server strictly enforces read-only access through a custom `ReadOnlyAdapter`
 
 ### Available Tools
 
-The MCP server provides eleven main tools:
+The MCP server provides fourteen main tools:
 
 **Device Tools:**
 1. `get_devices`: Accepts structured filter parameters to query devices with specific attributes
@@ -34,6 +34,11 @@ The MCP server provides eleven main tools:
 9. `get_prefixes_tool`: Accepts structured filter parameters to query IP prefixes with specific attributes
 10. `get_prefix_tool`: Retrieves detailed information about a single prefix by ID
 11. `ask_about_prefixes_tool`: Accepts natural language queries and converts them to appropriate prefix API calls
+
+**VLAN Tools:**
+12. `get_vlans`: Accepts structured filter parameters to query VLANs with specific attributes
+13. `get_vlan`: Retrieves detailed information about a single VLAN by ID
+14. `ask_about_vlans`: Accepts natural language queries and converts them to appropriate VLAN API calls
 
 ### Natural Language Processing
 
@@ -62,10 +67,17 @@ The server includes intelligent parsing of natural language queries into structu
 - Extract VLAN information (e.g., "VLAN 100", "vlan exchange-100", "VID 25")
 - Handle CIDR notation patterns in natural language
 
+**VLAN Queries:**
+- Extract VLAN ID numbers (e.g., "VLAN 100", "VID 90")
+- Identify site-specific VLANs (e.g., "VLANs at site SF1")
+- Parse status filters (e.g., "active", "reserved", "deprecated")
+- Support tenant and group filtering for VLAN organization
+- Handle substring matching for VLAN names (e.g., "90" finds "VLAN-90-Production")
+
 **General Features:**
 - Provide user-friendly error messages when parameters don't match NetBox's data
 - Support fuzzy matching for providers, circuit types, and site names
-- Consistent site resolution across all tools (devices, circuits, prefixes)
+- Consistent site resolution across all tools (devices, circuits, prefixes, VLANs)
 
 **Search Best Practices:**
 - NetBox search treats multiple words as AND logic (all terms must match in the same record)
@@ -205,12 +217,14 @@ src/
 │   ├── devices.py     # Device-related tools and logic
 │   ├── sites.py       # Site-related tools and logic
 │   ├── circuits.py    # Circuit-related tools and logic
-│   └── prefixes.py    # Prefix-related tools and logic
+│   ├── prefixes.py    # Prefix-related tools and logic
+│   └── vlans.py       # VLAN-related tools and logic
 ├── models/            # Pydantic models for validation
 │   ├── device.py      # Device model definitions
 │   ├── site.py        # Site model definitions
 │   ├── circuit.py     # Circuit model definitions
-│   └── prefix.py      # Prefix model definitions
+│   ├── prefix.py      # Prefix model definitions
+│   └── vlan.py        # VLAN model definitions
 └── config/            # Configuration and settings
     └── netbox.py      # NetBox client configuration
 ```
@@ -235,8 +249,10 @@ The NetBox MCP server specifically focuses on:
 8. **Prefix Pool Management**: Finding and filtering prefix pools and container prefixes
 9. **IP Family Support**: Querying both IPv4 and IPv6 prefixes with family-specific filtering
 10. **VLAN Integration**: Associating IP prefixes with VLANs for Layer 2/Layer 3 correlation
-11. **Natural Language Understanding**: Converting natural language queries to structured API calls
-12. **Readable Responses**: Formatting device, site, circuit, and prefix data in an easy-to-understand way
+11. **VLAN Management**: Querying VLANs by name, VID, site, group, tenant, role, and status
+12. **VLAN Substring Search**: Finding VLANs with true substring matching for names and descriptions
+13. **Natural Language Understanding**: Converting natural language queries to structured API calls
+14. **Readable Responses**: Formatting device, site, circuit, prefix, and VLAN data in an easy-to-understand way
 
 ## Environment Variables
 
@@ -366,6 +382,31 @@ mcp call ask_about_prefixes_tool --params '{"query":{"query":"Find all /24 subne
 
 # Natural language fallback (automatically uses general search)
 mcp call ask_about_prefixes_tool --params '{"query":{"query":"find all office prefixes"}}' uv run --directory src python server.py
+
+# VLAN Operations
+# Query VLANs with natural language (uses general search)
+mcp call ask_about_vlans --params '{"query":{"query":"Show me VLAN 100"}}' uv run --directory src python server.py
+
+# Get a specific VLAN by ID
+mcp call get_vlan --params '{"vlan_id":325}' uv run --directory src python server.py
+
+# Filter VLANs using structured parameters
+mcp call get_vlans --params '{"filter_params":{"site":"SF1","status":"active","limit":10}}' uv run --directory src python server.py
+
+# Pattern matching for VLAN names (demonstrates true substring search)
+mcp call get_vlans --params '{"filter_params":{"name_contains":"90","limit":10}}' uv run --directory src python server.py
+
+# Cross-field search (searches name, description, and VID)
+mcp call get_vlans --params '{"filter_params":{"search":"guest","limit":10}}' uv run --directory src python server.py
+
+# Find VLANs by VID (VLAN ID number)
+mcp call get_vlans --params '{"filter_params":{"vid":100,"limit":10}}' uv run --directory src python server.py
+
+# Find VLANs by tenant or group
+mcp call get_vlans --params '{"filter_params":{"tenant":"Gusto","limit":10}}' uv run --directory src python server.py
+
+# Natural language fallback (automatically uses general search)
+mcp call ask_about_vlans --params '{"query":{"query":"find all production VLANs"}}' uv run --directory src python server.py
 ```
 
 ## Troubleshooting
